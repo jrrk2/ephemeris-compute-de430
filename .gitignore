@@ -25,4 +25,16 @@ eggs/
 _build/
 .DS_Store
 data_full/
-
+#build_test.sh#
+#junk#
+.#build_test.sh
+.#junk
+ephem.log
+ephem_program.data
+ephem_program.js
+ephem_program.wasm
+ephem_test.bin
+ephem_test.bin.dSYM/
+mapfile
+src/ephemCalc/jpl_cache.c
+src/ephemCalc/jpl_nocache.c

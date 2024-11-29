@@ -7,8 +7,26 @@ external _myAscii : int -> float -> unit = "_myAscii"
 
 let jd_start = ref 2451544.5
 let jd_stop = ref 2451544.5
-let planet = ref "earth"
-let comet = ref 0
+let mybody = ref "Sun"
+
+(* Get current date and tomorrow's date *)
+let today = Unix.time()
+let tomorrow = today +. 86400.0
+
+(* Format dates to YYYY-MM-DD *)
+let format_date (date:float) =
+    let tm = Unix.gmtime date in
+    let year = tm.tm_year + 1900 in
+    let month = tm.tm_mon + 1 in
+    let day = tm.tm_mday in
+    Printf.sprintf "%04d-%02d-%02d" year month day  (* Format as YYYY-MM-DD *)
+
+(* Format time to HH:MM *)
+let format_time (date:float) =
+    let tm = Unix.gmtime date in
+    let hour = tm.tm_hour in
+    let minute = tm.tm_min in
+    Printf.sprintf "%02d:%02d" hour minute  (* Format as HH:MM *)
 
 let string_to_float (s : string) : float =
   let len = String.length s in
@@ -32,23 +50,34 @@ let set_static_text element txt =
   element##.textContent := Js.some (Js.string txt);
   Js.Unsafe.set (element##.style) (Js.string "display") (Js.string "block")
     
-let confirm_my_button = fun _ ->
-  let element = Js_of_ocaml.Dom_html.getElementById "planets-message" in
+let confirm_my_button msg = fun _ ->
+  let element = Js_of_ocaml.Dom_html.getElementById msg in
   let _ = _myFloat !jd_start !jd_stop in
-  let ra = _myFunction 3 in
-  let dec = _myFunction 4 in
-  set_static_text element (!planet^
+  let ra = (_myFunction 3) *. 180. /. Float.pi in
+  let dec = (_myFunction 4) *. 180. /. Float.pi in
+  let latitude = 52.2 in
+  let longitude = 0.11667 in
+  let lst_calc = Altaz.local_siderial_time' longitude (!jd_start -. Altaz.jd_2000) in
+  let ra_now, dec_now = Altaz.j2000_to_jnow ra dec in
+  let alt_calc, az_calc, hour_calc = Altaz.raDectoAltAz ra_now dec_now latitude longitude lst_calc in
+  set_static_text element (!mybody^
 			 ": RA="^
-			 string_of_float (ra *. 180. /. Float.pi)^
+			 Altaz.hms_of_float (ra)^
 			 ", DEC="^
-			 string_of_float (dec *. 180. /. Float.pi));
+			 Altaz.dms_of_float (dec)^
+			 ", LST="^
+			 Altaz.dms_of_float (lst_calc)^
+			 ", ALT="^
+			 Altaz.dms_of_float (alt_calc)^
+			 ", AZ="^
+			 Altaz.dms_of_float (az_calc));
   true
 
 let create_planet_picker () =
   let open Tyxml_js.Html in
   let message_div = div ~a:[a_id "planets-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
   let select_div = div ~a:[a_id "planets-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
-  let button = button ~a:[ a_id "my-button"; a_onclick confirm_my_button ] [ txt "Find Planet" ] in
+  let button = button ~a:[ a_id "my-button"; a_onclick (confirm_my_button "planets-message") ] [ txt "Find Major body" ] in
   let input = input ~a:[ a_id "my-input"; a_placeholder "Type here" ; a_oninput (fun _ -> true) ] () in
   let dropdown =
     select
@@ -65,8 +94,8 @@ let create_planet_picker () =
                   let selected_value = Js.to_string (select##.value) in
 		  let element = Js_of_ocaml.Dom_html.getElementById "planets-select" in
 		  send 0 selected_value;
-		  set_static_text element ("Planet was selected: "^selected_value);
-		  planet := selected_value;
+		  set_static_text element ("Body selected: "^selected_value);
+		  mybody := selected_value;
                   true
                 )
             )
@@ -74,7 +103,7 @@ let create_planet_picker () =
       ]
       (List.map
          (fun opt -> option ~a:[ a_value opt ] (txt opt))
-         ["Mercury";"Venus";"Earth";"Mars";"Jupiter";"Saturn";"Uranus";"Neptune"])
+         ["Sun";"Moon";"Mercury";"Venus";"Earth";"Mars";"Jupiter";"Saturn";"Uranus";"Neptune"])
   in
   let output = div ~a:[ a_id "output"; a_style "margin-top: 20px;" ] [] in
   div [ button; br (); input; br (); dropdown; br (); output; message_div; select_div ]
@@ -96,7 +125,7 @@ let create_comet_picker () =
   
   let message_div = div ~a:[a_id "comet-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
   let select_div = div ~a:[a_id "comet-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
-  let button = button ~a:[ a_id "comet-button"; a_onclick confirm_my_button ] [ txt "Find Comet" ] in
+  let button = button ~a:[ a_id "comet-button"; a_onclick (confirm_my_button "comet-message") ] [ txt "Find Comet" ] in
   
   let year_dropdown =
     select
@@ -177,8 +206,8 @@ let create_comet_picker () =
                   send 1 name;
                   send 2 sequence;
                   send 3 discoverer;
-                  set_static_text element ("Comet was selected: "^name^" "^sequence^" "^discoverer);
-                  comet := selected_index;
+                  set_static_text element ("Comet selected: "^name^" "^sequence^" "^discoverer);
+                  mybody := name^" "^sequence;
                   true
                 )
             )
@@ -250,56 +279,81 @@ let create_comet_picker () =
   
   let output = div ~a:[ a_id "comet-output"; a_style "margin-top: 20px;" ] [] in
   div [ dropdown; br (); output; message_div; select_div ]      
-*)
-let handle_julian jd = fun input ->
-          let selected_date = Js.to_string (input##.value) in
+  *)
+
+let handle_julian_date jd selected_date =
 	  let yr,mon,dy = Scanf.sscanf selected_date "%d-%d-%d" (fun yr mon dy -> yr,mon,dy) in
           let element = Js_of_ocaml.Dom_html.getElementById "date-message" in
-	  jd := Altaz.computeTheJulianDay true yr mon dy (* +. float_of_int(hr*3600+min*60+sec) /. 86400.0 *);
+	  let jd_frac = !jd -. 0.5 -. floor (!jd -. 0.5) in
+	  jd := Altaz.computeTheJulianDay true yr mon dy +. jd_frac;
 	  if !jd < !jd_start then jd_start := !jd;
 	  if !jd > !jd_stop then jd_stop := !jd;
           set_static_text element ("Julian Date Start: "^string_of_float !jd_start^", Stop: "^ string_of_float !jd_stop);
           true
 
-let handle_startend_datetime_change jd ev =
+let handle_julian_time jd selected_date =          
+	  let hr,min = Scanf.sscanf selected_date "%d:%d" (fun hr min -> hr,min) in
+          let element = Js_of_ocaml.Dom_html.getElementById "date-message" in
+	  jd := floor (!jd -. 0.5) +. 0.5 +. float_of_int(hr*3600+min*60) /. 86400.0;
+	  if !jd < !jd_start then jd_start := !jd;
+	  if !jd > !jd_stop then jd_stop := !jd;
+          set_static_text element ("Julian Date Start: "^string_of_float !jd_start^", Stop: "^ string_of_float !jd_stop);
+          true
+
+let handle_startend_date_change jd ev =
   Js.Opt.case (ev##.target)
     (fun () -> false)
     (fun target ->
       let input = Dom_html.CoerceTo.input target in
       Js.Opt.case input
         (fun () -> false)
-        (handle_julian jd)
+        (fun input -> handle_julian_date jd (Js.to_string (input##.value)))
+    )
+
+let handle_startend_time_change jd ev =
+  Js.Opt.case (ev##.target)
+    (fun () -> false)
+    (fun target ->
+      let input = Dom_html.CoerceTo.input target in
+      Js.Opt.case input
+        (fun () -> false)
+        (fun input -> handle_julian_time jd (Js.to_string (input##.value)))
     )
 
 let create_date_picker () =
   let open Tyxml_js.Html in
   let message_div = div ~a:[a_id "date-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
+
   let start_date_label = label ~a:[a_label_for "start-date-picker"] [txt "Start Date: "] in
   let start_date_input = input ~a:[
     a_id "start-date-picker"; 
     a_input_type `Date;
-    a_oninput (handle_startend_datetime_change jd_start)
+    a_value (format_date today);  (* Set default to current date *)
+    a_oninput (handle_startend_date_change jd_start)
   ] () in
   
   let start_time_label = label ~a:[a_label_for "start-time-picker"] [txt "Start Time: "] in
   let start_time_input = input ~a:[
     a_id "start-time-picker"; 
     a_input_type `Time;
-    a_oninput (handle_startend_datetime_change jd_start)
+    a_value (format_time today);  (* Set default to current date *)
+    a_oninput (handle_startend_time_change jd_start)
   ] () in
   
   let end_date_label = label ~a:[a_label_for "end-date-picker"] [txt "End Date: "] in
   let end_date_input = input ~a:[
     a_id "end-date-picker"; 
     a_input_type `Date;
-    a_oninput (handle_startend_datetime_change jd_stop)
+    a_value (format_date tomorrow);  (* Set default to current date *)
+   a_oninput (handle_startend_date_change jd_stop)
   ] () in
   
   let end_time_label = label ~a:[a_label_for "end-time-picker"] [txt "End Time: "] in
   let end_time_input = input ~a:[
     a_id "end-time-picker"; 
     a_input_type `Time;
-    a_oninput (handle_startend_datetime_change jd_stop)
+    a_value (format_time tomorrow);  (* Set default to current date *)
+    a_oninput (handle_startend_time_change jd_stop)
   ] () in
   
   div [
@@ -361,6 +415,7 @@ let switch_tab tab_id =
         end
     | _ -> ()
   done;
+  send 0 !mybody; (* make sure body not empty *)  
   true
 
 let create_tab_headers tabs =
@@ -488,4 +543,12 @@ let create_ui () =
 
 let () =
   let root = Dom_html.getElementById "app" in
-  Dom.appendChild root (Tyxml_js.To_dom.of_div (create_ui ()))
+  Dom.appendChild root (Tyxml_js.To_dom.of_div (create_ui ()));
+
+  (* we need to update the julian dates with the dialog defaults (now and 24 hours time) *)
+  let _ = handle_julian_date jd_start (format_date today) in
+  let _ = handle_julian_time jd_start (format_time today) in
+  let _ = handle_julian_date jd_stop (format_date tomorrow) in
+  let _ = handle_julian_time jd_stop (format_time tomorrow) in
+  ()
+  

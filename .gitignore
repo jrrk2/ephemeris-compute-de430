@@ -21,7 +21,7 @@ eggs/
 /obj
 /.idea
 /cmake-build-debug
-/data
+data/dcfbinary*
 _build/
 .DS_Store
 data_full/

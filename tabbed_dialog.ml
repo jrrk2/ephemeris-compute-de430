@@ -48,7 +48,7 @@ let create_planet_picker () =
   let open Tyxml_js.Html in
   let message_div = div ~a:[a_id "planets-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
   let select_div = div ~a:[a_id "planets-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
-  let button = button ~a:[ a_id "my-button"; a_onclick confirm_my_button ] [ txt "Click Me" ] in
+  let button = button ~a:[ a_id "my-button"; a_onclick confirm_my_button ] [ txt "Find Planet" ] in
   let input = input ~a:[ a_id "my-input"; a_placeholder "Type here" ; a_oninput (fun _ -> true) ] () in
   let dropdown =
     select
@@ -79,12 +79,125 @@ let create_planet_picker () =
   let output = div ~a:[ a_id "output"; a_style "margin-top: 20px;" ] [] in
   div [ button; br (); input; br (); dropdown; br (); output; message_div; select_div ]
 
+let group_comets comets =
+  List.fold_right (fun (name, sequence, discoverer) acc ->
+    let year = String.sub name 2 4 in
+    let current_year_group = 
+      try List.assoc year acc 
+      with Not_found -> [] 
+    in
+    let updated_acc = List.remove_assoc year acc in
+    (year, (name, sequence, discoverer)::current_year_group)::updated_acc
+  ) comets []  
+
 let create_comet_picker () =
   let open Tyxml_js.Html in
+  let grouped_comets = group_comets Comets.comets in
+  
   let message_div = div ~a:[a_id "comet-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
   let select_div = div ~a:[a_id "comet-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
-  let button = button ~a:[ a_id "comet-button"; a_onclick confirm_my_button ] [ txt "Click Me" ] in
-  let input = input ~a:[ a_id "comet-input"; a_placeholder "Type here" ; a_oninput (fun _ -> true) ] () in
+  let button = button ~a:[ a_id "comet-button"; a_onclick confirm_my_button ] [ txt "Find Comet" ] in
+  
+  let year_dropdown =
+    select
+      ~a:[ 
+        a_id "comet-year-dropdown";
+        a_onchange (fun ev ->
+          Js.Opt.case (ev##.target)
+            (fun () -> false)
+            (fun target ->
+              let select = Dom_html.CoerceTo.select target in
+              Js.Opt.case select
+                (fun () -> false)
+                (fun select ->
+                  let selected_year = Js.to_string (select##.value) in
+                  let comet_dropdown = Js_of_ocaml.Dom_html.getElementById "comet-specific-dropdown" in
+                  let comet_options = 
+                    List.find (fun (year, _) -> year = selected_year) grouped_comets 
+                    |> snd 
+                    |> List.mapi (fun idx (name, sequence, discoverer) -> 
+                      option 
+                        ~a:[a_value (string_of_int idx)] 
+                        (txt (name ^ " " ^ sequence ^ " (" ^ discoverer ^ ")"))
+                    )
+                  in
+                  
+                  (* Clear existing options *)
+                  Js.Opt.iter (comet_dropdown##.firstChild) (fun child ->
+                    let _ = comet_dropdown##removeChild child in
+                    ()
+                  );
+                  
+                  (* Add new options *)
+                  List.iter (fun opt -> 
+                    let dom_opt = Tyxml_js.To_dom.of_option opt in
+                    Dom.appendChild comet_dropdown dom_opt
+                  ) comet_options;
+                  
+                  (* Show comet dropdown *)
+                  comet_dropdown##.style##.display := Js.string "block";
+                  
+                  true
+                )
+            )
+        )
+      ]
+      (List.map 
+        (fun (year, _) -> 
+          option 
+            ~a:[a_value year] 
+            (txt year)
+        ) 
+        grouped_comets)
+  in
+  
+  let comet_dropdown =
+    select
+      ~a:[ 
+        a_id "comet-specific-dropdown";
+        a_style "display: none;";
+        a_onchange (fun ev ->
+          Js.Opt.case (ev##.target)
+            (fun () -> false)
+            (fun target ->
+              let select = Dom_html.CoerceTo.select target in
+              Js.Opt.case select
+                (fun () -> false)
+                (fun select ->
+                  let selected_index = int_of_string (Js.to_string (select##.value)) in
+                  let element = Js_of_ocaml.Dom_html.getElementById "comet-select" in
+		  let selected_year =
+		    let select_element = Js_of_ocaml.Dom_html.getElementById "comet-year-dropdown" in
+		    Js.Opt.case (Dom_html.CoerceTo.select select_element)
+		    ( fun () -> "")  (* Handle the case where the element is not a select *)
+		    ( fun select -> Js.to_string select##.value) in
+                  let (name, sequence, discoverer) = 
+                    List.nth (snd (List.find (fun (year, _) -> year = selected_year) grouped_comets)) selected_index
+                  in
+                  send 1 name;
+                  send 2 sequence;
+                  send 3 discoverer;
+                  set_static_text element ("Comet was selected: "^name^" "^sequence^" "^discoverer);
+                  comet := selected_index;
+                  true
+                )
+            )
+        )
+      ]
+      []
+  in
+  
+  let output = div ~a:[ a_id "comet-output"; a_style "margin-top: 20px;" ] [] in
+  div [ button; year_dropdown; br (); comet_dropdown; br (); output; message_div; select_div ]
+
+(*      
+let create_comet_picker () =
+  let open Tyxml_js.Html in
+  let grouped_comets = group_comets Comets.comets in
+  
+  let message_div = div ~a:[a_id "comet-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
+  let select_div = div ~a:[a_id "comet-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
+  
   let dropdown =
     select
       ~a:[ 
@@ -98,27 +211,46 @@ let create_comet_picker () =
                 (fun () -> false)
                 (fun select ->
                   let selected_index = select##.selectedIndex in
-		  let element = Js_of_ocaml.Dom_html.getElementById "comet-select" in
-		  let value1,value2,value3 = List.nth Comets.comets selected_index in
-		  send 1 value1;
-		  send 2 value2;
-		  send 3 value3;
-		  set_static_text element ("Comet was selected: "^value1^" "^value2^" "^value3);
-		  comet := selected_index;
+                  let element = Js_of_ocaml.Dom_html.getElementById "comet-select" in
+                  let value1,value2,value3 = List.nth Comets.comets selected_index in
+                  send 1 value1;
+                  send 2 value2;
+                  send 3 value3;
+                  set_static_text element ("Comet was selected: "^value1^" "^value2^" "^value3);
+                  comet := selected_index;
                   true
                 )
             )
         )
       ]
-      (List.map
-         (fun opt -> option ~a:[ a_value opt ] (txt opt))
-         (List.map (fun (a,b,c) -> a^" "^b^" "^c) Comets.comets))
+      (List.flatten (
+        List.map (fun (year, year_comets) ->
+          (* Add a disabled option for the year as a group header *)
+          let year_header = 
+            option 
+              ~a:[a_value year; a_disabled ()] 
+              (txt ("--- " ^ year ^ " ---")) 
+          in
+          
+          (* Create options for each comet in the year *)
+          let comet_options = 
+            List.map 
+              (fun (name, sequence, discoverer) -> 
+                option 
+                  ~a:[a_value (name^" "^sequence^" "^discoverer)] 
+                  (txt (name ^ " " ^ sequence ^ " (" ^ discoverer ^ ")"))
+              ) 
+              year_comets
+          in
+          
+          year_header :: comet_options
+        ) grouped_comets
+      ))
   in
+  
   let output = div ~a:[ a_id "comet-output"; a_style "margin-top: 20px;" ] [] in
-  div [ button; br (); input; br (); dropdown; br (); output; message_div; select_div ]
-
-(* Existing code remains the same *)
-
+  div [ dropdown; br (); output; message_div; select_div ]      
+*)
 let handle_julian jd = fun input ->
           let selected_date = Js.to_string (input##.value) in
 	  let yr,mon,dy = Scanf.sscanf selected_date "%d-%d-%d" (fun yr mon dy -> yr,mon,dy) in

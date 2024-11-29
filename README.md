@@ -1,7 +1,14 @@
-# ephemerisCompute (DE430 version)
+# ephemerisCompute (DE430 browser version)
 
 `ephemerisCompute` is a command-line tool for producing tables of the positions
 of solar system objects over time.
+
+This version has been modified to run in a web browser in a hacky way.
+The results should not be relied on without further testing.
+
+To suit the requirements of mobile phones etc the database has been cut down
+to just one century 1950 - 2050, and the header.430 and jpl.c modified in a 
+way that may or may not be correct. Use at your own risk!
 
 For the Sun, Moon and planets, it extracts positions from the publicly
 available NASA DE430 ephemeris (published 2013), which covers the time period

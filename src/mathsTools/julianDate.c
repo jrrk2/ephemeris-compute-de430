@@ -176,7 +176,7 @@ double julian_day(int year, int month, int day, int hour, int min, int sec, int 
 
     jd = 365.0 * year - 679004.0 + 2400000.5 + b + floor(30.6001 * (month + 1)) + day;
 
-    day_fraction = (fabs(hour) + fabs(min) / 60.0 + fabs(sec) / 3600.0) / 24.0;
+    day_fraction = ((double)(hour) + (double)(min) / 60.0 + (double)(sec) / 3600.0) / 24.0;
 
     return jd + day_fraction;
 }

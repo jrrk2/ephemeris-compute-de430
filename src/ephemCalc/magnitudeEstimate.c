@@ -212,8 +212,8 @@ void magnitudeEstimate(int body_id, double xo, double yo, double zo, double xe, 
     else if (body_id >= 1e7) {
         orbitalElements *item;
         int fail = 0;
-        albedo = GSL_NAN;
-        Ro = GSL_NAN;
+        albedo = nan(0);
+        Ro = nan(0);
 
         if (body_id < 2e7) {
             // Asteroid
@@ -250,11 +250,11 @@ void magnitudeEstimate(int body_id, double xo, double yo, double zo, double xe, 
             }
         } else {
             // Comet or asteroid has an illegal body_id
-            albedo = Ro = *mag = GSL_NAN;
+	  albedo = Ro = *mag = nan(0);
         }
     } else {
         // For other bodies, we don't know how to calculate a magnitude
-        albedo = Ro = *mag = GSL_NAN;
+        albedo = Ro = *mag = nan(0);
     }
 
 
@@ -278,7 +278,7 @@ void magnitudeEstimate(int body_id, double xo, double yo, double zo, double xe, 
     if ((body_id == 2) || (body_id == 19)) {
         *phase = 1;
         *angSize = 180 * 3600;
-        *mag = GSL_NAN;
+        *mag = nan(0);
     }
 
     // If requested, then apply topocentric correction to (xe, ye, ze), moving our frame of reference from the centre

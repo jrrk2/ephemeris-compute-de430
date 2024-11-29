@@ -1,5 +1,7 @@
 *.pyc
-
+*.o
+*.lo
+*~
 # Distribution / packaging
 develop-eggs/
 dist/
@@ -15,4 +17,7 @@ eggs/
 /.idea
 /cmake-build-debug
 /data
+_build/
+.DS_Store
+data_full/
 

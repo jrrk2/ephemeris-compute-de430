@@ -247,7 +247,7 @@ void *lt_malloc_incontext(int size, int context) {
 void **_fastmalloc_firstblocklist;
 
 //! For each allocation context, a pointer to the chunk of memory which we are currently allocating from
-void **_fastmalloc_currentblocklist;
+uint8_t **_fastmalloc_currentblocklist;
 
 //! For each allocation context, integers recording how many bytes have been allocated from the current block
 long *_fastmalloc_currentblock_alloc_ptr;
@@ -267,7 +267,7 @@ void fastmalloc_init() {
     if (_fastmalloc_initialised == 1) return;
 
     _fastmalloc_firstblocklist = (void **) malloc(PPL_MAX_CONTEXTS * sizeof(void *));
-    _fastmalloc_currentblocklist = (void **) malloc(PPL_MAX_CONTEXTS * sizeof(void *));
+    _fastmalloc_currentblocklist = (uint8_t **) malloc(PPL_MAX_CONTEXTS * sizeof(void *));
     _fastmalloc_currentblock_alloc_ptr = (long *) malloc(PPL_MAX_CONTEXTS * sizeof(long));
 
     for (i = 0; i < PPL_MAX_CONTEXTS; i++) _fastmalloc_firstblocklist[i] = NULL;
@@ -304,7 +304,7 @@ void fastmalloc_close() {
 //! \return - A void pointer to the new block of memory
 
 void *fastmalloc(int context, int size) {
-    void *ptr, *out;
+    uint8_t *ptr, *out;
 
     _fastmalloc_callcount++;
     _fastmalloc_bytecount += size;
@@ -346,7 +346,7 @@ void *fastmalloc(int context, int size) {
                 return NULL;
             }
         }
-        *((void **) ptr) = NULL; // Link to next block in chain
+        *((uint8_t **) ptr) = NULL; // Link to next block in chain
         if (_fastmalloc_currentblocklist[context] == NULL)
             _fastmalloc_firstblocklist[context] = ptr; // Insert link into previous block in chain
         else *((void **) _fastmalloc_currentblocklist[context]) = ptr;

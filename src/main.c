@@ -35,9 +35,7 @@
 #include "coreUtils/strConstants.h"
 #include "coreUtils/errorReport.h"
 
-#include "ephemCalc/constellations.h"
 #include "ephemCalc/jpl.h"
-#include "ephemCalc/meeus.h"
 #include "ephemCalc/orbitalElements.h"
 #include "ephemCalc/magnitudeEstimate.h"
 #include "mathsTools/precess_equinoxes.h"
@@ -89,15 +87,6 @@ void compute_ephemeris(settings *s) {
                                      &ecliptic_latitude, &ecliptic_distance, s->ra_dec_epoch,
                                      s->enable_topocentric_correction,
                                      s->latitude, s->longitude);
-
-                // If the <use_orbital_elements> is 2, we use Jean Meeus's algorithms (NOT IMPLEMENTED!!!)
-            else if (s->use_orbital_elements == 2)
-                meeus_computeEphemeris(s->body_id[i], jd, &x, &y, &z, &ra, &dec, &mag, &phase, &ang_size, &phy_size,
-                                       &albedo,
-                                       &sun_dist, &earth_dist, &sun_ang_dist, &theta_eso, &ecliptic_longitude,
-                                       &ecliptic_latitude, &ecliptic_distance, s->ra_dec_epoch,
-                                       s->enable_topocentric_correction,
-                                       s->latitude, s->longitude);
 
                 // If the <use_orbital_elements> is 1, we use orbital elements
             else if (s->use_orbital_elements == 1)
@@ -160,7 +149,7 @@ void compute_ephemeris(settings *s) {
             if (!s->output_binary) {
                 //-1 - x y z   (ecliptic)
                 // 0 - x y z   (J2000)
-                // 1 - ra dec  (radians)
+                // 1 - ra dec  (degrees)
                 // 2 - x y z ra dec mag phase AngSize
                 // 3 - x y z ra dec mag phase AngSize physical_size albedo
 
@@ -171,7 +160,7 @@ void compute_ephemeris(settings *s) {
 
                 // Write RA and Dec in modes 1,2,3
                 if (s->output_format >= 1) {
-                    fprintf(output, "%12.9f %12.9f   ", buffer[o + 3], buffer[o + 4]);
+                    fprintf(output, "%12.9f %12.9f   ", buffer[o + 3]*180.0/M_PI, buffer[o + 4]*180.0/M_PI);
                 }
 
                 // Write magnitude, phase and angular size in modes 2,3
@@ -185,11 +174,6 @@ void compute_ephemeris(settings *s) {
                             buffer[o + 9], buffer[o + 10], buffer[o + 11], buffer[o + 12], buffer[o + 13],
                             buffer[o + 14], buffer[o + 15], buffer[o + 16]);
                 }
-
-                // Write the name of the constellation the object is in, in the final column
-                if (s->output_constellations) {
-                    fprintf(output, "%s ", constellations_fetch(buffer[o + 3], buffer[o + 4]));
-                }
             }
 
                 // Produce binary output
@@ -198,8 +182,6 @@ void compute_ephemeris(settings *s) {
                 if (s->output_format >= 1) fwrite((void *) (buffer + o + 3), sizeof(double), 2, output);
                 if (s->output_format >= 2) fwrite((void *) (buffer + o + 5), sizeof(double), 3, output);
                 if (s->output_format >= 3) fwrite((void *) (buffer + o + 8), sizeof(double), 9, output);
-                if (s->output_constellations)
-                    fprintf(output, "%s ", constellations_fetch(buffer[o + 3], buffer[o + 4]));
             }
         }
         if (!s->output_binary) fprintf(output, "\n");
@@ -214,13 +196,12 @@ void compute_ephemeris(settings *s) {
     settings_close(s);
 }
 
-int main(int argc, const char **argv) {
+int main_args(int argc, const char **argv) {
     settings ephemeris_settings;
 
     // Initialise sub-modules
     if (DEBUG) ephem_log("Initialising ephemeris computer.");
     lt_memoryInit(&ephem_error, &ephem_log);
-    constellations_init();
 
     // Turn off GSL's automatic error handler
     gsl_set_error_handler_off();
@@ -253,8 +234,6 @@ int main(int argc, const char **argv) {
                         "Set the either 0 (use DE430) or 1 (use orbital elements)"),
             OPT_INTEGER('b', "output_binary", &ephemeris_settings.output_binary,
                         "Set to either 0 (text output) or 1 (binary output)"),
-            OPT_INTEGER('c', "output_constellations", &ephemeris_settings.output_constellations,
-                        "Set to either 0 (no column for constellation names) or 1"),
             OPT_STRING('o', "objects", &ephemeris_settings.objects_input_list,
                        "The list of objects to produce ephemerides for. See README.md."),
             OPT_END(),
@@ -284,3 +263,113 @@ int main(int argc, const char **argv) {
     return 0;
 }
 
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include <stdint.h>
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#else
+#define EMSCRIPTEN_KEEPALIVE
+#endif
+
+// my_program.c
+static char *planet = "earth";
+static settings ephemeris_settings;
+
+static char *dtoa(double value) {
+    int precision = 6;
+    int size = snprintf(NULL, 0, "%.*f", precision, value); // Get required size
+    char *buffer = malloc(size + 1); // +1 for the null terminator
+    if (buffer == NULL) {
+        return NULL; // Handle memory allocation failure
+    }
+    snprintf(buffer, size + 1, "%.*f", precision, value); // Format the double into the buffer
+    return buffer; // Return pointer to the allocated string
+}
+
+EMSCRIPTEN_KEEPALIVE
+double pack_chars_to_float(const char *chars) {
+    double packed = 0.0;
+    for (int i = 0; i < 7; i++) {
+        packed += ldexp((double)(chars[i] & 0x7F), (7 - i) * 7);
+    }
+    return packed;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void unpack_float_to_chars(double packed, char *chars) {
+    for (int i = 0; i < 7; i++) {
+        int char_val = (int)(packed / ldexp(1.0, (7 - i) * 7)) & 0x7F;
+        chars[i] = (char)char_val;
+        packed -= char_val * ldexp(1.0, (7 - i) * 7);
+    }
+    chars[7] = '\0'; // Null-terminate the string
+}
+
+EMSCRIPTEN_KEEPALIVE
+int myFunction(int arg) {
+    printf("Called from OCaml with argument: %d\n", arg);
+    return arg * 2; // Example functionality
+}
+
+EMSCRIPTEN_KEEPALIVE
+double myFloat(double arg1, double arg2) {
+  printf("selected body: %s\n", planet);
+  // Set up default settings
+  settings_default(&ephemeris_settings);
+  ephemeris_settings.objects_input_list = planet;
+  ephemeris_settings.jd_min = arg1;
+  ephemeris_settings.jd_max = arg2;
+  ephemeris_settings.jd_step = 1.0;
+  ephemeris_settings.latitude = 52.2;
+  ephemeris_settings.longitude = 0.0;
+  ephemeris_settings.enable_topocentric_correction = 0.0;
+  ephemeris_settings.output_format = 1.0;
+
+  // Create ephemeris
+  compute_ephemeris(&ephemeris_settings);
+  return 0.0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void float_to_string_sub(char *first, double f) {
+  double flr = floor (f / 128.0);
+  double fprime = f - flr * 128.0;
+  int len;
+  if (flr > 0.0) float_to_string_sub(first, flr);
+  len = strlen(first);
+  first[len] = (int) fprime;
+  first[len+1] = 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+char *float_to_string(double f) {
+  char buf[20];
+  *buf = 0;
+  float_to_string_sub(buf, f);
+  return strdup(buf);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void myAscii(double asciif) {
+  planet = float_to_string(asciif);
+}
+
+EMSCRIPTEN_KEEPALIVE
+#ifndef __EMSCRIPTEN__
+int main(int argc, const char **argv) { return main_args(argc, argv); }
+#else
+int main() {
+
+    puts("Hello, World");
+  
+    lt_memoryInit(&ephem_error, &ephem_log);
+
+    // Turn off GSL's automatic error handler
+    gsl_set_error_handler_off();
+
+    return 0;
+}  
+#endif

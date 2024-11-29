@@ -22,6 +22,10 @@
 #ifndef ORBITALELEMENTS_H
 #define ORBITALELEMENTS_H 1
 
+#ifndef SRCDIR
+#define SRCDIR "/src/"
+#endif
+
 #include "coreUtils/strConstants.h"
 
 #define MAX_ASTEROIDS 1500000

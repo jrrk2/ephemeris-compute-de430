@@ -42,10 +42,10 @@
 static int JPL_EphemNumber = 430;
 
 //! The starting year of the DE430 ephemeris
-static int JPL_ASCII_first = 1550;
+static int JPL_ASCII_first = 1950;
 
 //! The end year of the DE430 ephemeris
-static int JPL_ASCII_last = 2650;
+static int JPL_ASCII_last = 2050;
 
 //! The number of years within each discrete file
 static int JPL_ASCII_step = 100;
@@ -232,7 +232,8 @@ void jpl_readAsciiData() {
             // Open the file -- first time around the header files; subsequently, the ephemeris itself
             input = fopen(fname, "rt");
             if (input == NULL) {
-                ephem_fatal(__FILE__, __LINE__, "Could not open ephemeris file.");
+                snprintf(temp_err_string, FNAME_LENGTH, "Failed opening file <%s>", fname);
+                ephem_fatal(__FILE__, __LINE__, temp_err_string);
                 exit(1);
             }
 

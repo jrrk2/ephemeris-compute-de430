@@ -26,15 +26,15 @@ DATE    = 23/09/2024
 PATHLINK= /
 
 WARNINGS    = -Wall -Wno-format-truncation -Wno-unknown-pragmas
-COMPILE     = $(CC) $(WARNINGS) -g -c -I $(CWD)/src
-LIBS        = -lgsl -lgslcblas -lm
-LINK        = $(CC) $(WARNINGS) -g -fopenmp
+COMPILE     = $(CC) $(WARNINGS) -g -c -I $(CWD)/src -I /opt/homebrew/Cellar/gsl/2.8/include
+LIBS        = -lgsl -lgslcblas -lm -L/opt/homebrew/Cellar/gsl/2.8/lib
+LINK        = $(CC) $(WARNINGS) -g
 LINK_SERIAL = $(CC) $(WARNINGS) -g
 
 OPTIMISATION = -O3
 
-DEBUG   = -D DEBUG=1 -D MEMDEBUG1=1 -D MEMDEBUG2=0 -fopenmp
-NODEBUG = -D DEBUG=0 -D MEMDEBUG1=0 -D MEMDEBUG2=0 -fopenmp
+DEBUG   = -D DEBUG=1 -D MEMDEBUG1=1 -D MEMDEBUG2=0
+NODEBUG = -D DEBUG=0 -D MEMDEBUG1=0 -D MEMDEBUG2=0
 SERIAL  = -D DEBUG=0 -D MEMDEBUG1=0 -D MEMDEBUG2=0
 
 LOCAL_SRCDIR = src

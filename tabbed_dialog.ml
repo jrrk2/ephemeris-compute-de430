@@ -1,7 +1,7 @@
 open Js_of_ocaml
 open Js_of_ocaml_tyxml
 
-external _myFunction : int -> int = "_myFunction"
+external _myFunction : int -> float = "_myFunction"
 external _myFloat : float -> float -> float = "_myFloat"
 external _myAscii : int -> float -> unit = "_myAscii"
 
@@ -35,7 +35,13 @@ let set_static_text element txt =
 let confirm_my_button = fun _ ->
   let element = Js_of_ocaml.Dom_html.getElementById "planets-message" in
   let _ = _myFloat !jd_start !jd_stop in
-  set_static_text element ("Button was clicked for "^ !planet);
+  let ra = _myFunction 3 in
+  let dec = _myFunction 4 in
+  set_static_text element (!planet^
+			 ": RA="^
+			 string_of_float (ra *. 180. /. Float.pi)^
+			 ", DEC="^
+			 string_of_float (dec *. 180. /. Float.pi));
   true
 
 let create_planet_picker () =

@@ -73,7 +73,7 @@ void compute_ephemeris(settings *s) {
         int i;
 #pragma omp parallel for shared(output) private(i)
         for (i = 0; i < s->objects_count; i++) {
-            const int o = i * N_PARAMETERS;
+            const int o = step_count * N_PARAMETERS;
             double ra = 0, dec = 0, x = 0, y = 0, z = 0;
             double mag = 0, phase = 0, ang_size = 0, phy_size = 0, albedo = 0;
             double sun_dist = 0, earth_dist = 0, sun_ang_dist = 0, theta_eso = 0;
@@ -160,7 +160,7 @@ void compute_ephemeris(settings *s) {
 
                 // Write RA and Dec in modes 1,2,3
                 if (s->output_format >= 1) {
-                    fprintf(output, "%12.9f %12.9f   ", buffer[o + 3]*180.0/M_PI, buffer[o + 4]*180.0/M_PI);
+                    fprintf(output, "%12.9f %12.9f   ", buffer[o + 3], buffer[o + 4]);
                 }
 
                 // Write magnitude, phase and angular size in modes 2,3
@@ -309,9 +309,8 @@ void unpack_float_to_chars(double packed, char *chars) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-int myFunction(int arg) {
-    printf("Called from OCaml with argument: %d\n", arg);
-    return arg * 2; // Example functionality
+double myFunction(int arg) {
+    return buffer[arg]; // saved ephem
 }
 
 EMSCRIPTEN_KEEPALIVE

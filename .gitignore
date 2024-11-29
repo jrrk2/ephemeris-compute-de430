@@ -1,7 +1,12 @@
 *.pyc
 *.o
 *.lo
+*.Po
+*.Plo
+*.a
+*.la
 *~
+stamp-*
 # Distribution / packaging
 develop-eggs/
 dist/

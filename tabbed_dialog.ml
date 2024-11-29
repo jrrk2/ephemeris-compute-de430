@@ -3,11 +3,12 @@ open Js_of_ocaml_tyxml
 
 external _myFunction : int -> int = "_myFunction"
 external _myFloat : float -> float -> float = "_myFloat"
-external _myAscii : float -> unit = "_myAscii"
+external _myAscii : int -> float -> unit = "_myAscii"
 
 let jd_start = ref 2451544.5
 let jd_stop = ref 2451544.5
 let planet = ref "earth"
+let comet = ref 0
 
 let string_to_float (s : string) : float =
   let len = String.length s in
@@ -23,7 +24,7 @@ let rec float_to_string f =
   let flr = floor (f /. 128.0) in let f' = f -. flr *. 128.0 in
   (if flr > 0.0 then float_to_string flr else "") ^ String.make 1 (Char.chr (int_of_float f'))
 
-let send str = _myAscii (string_to_float str)
+let send idx str = _myAscii idx (string_to_float str)
 
 (* Existing dialog creation functions remain the same *)
 
@@ -32,15 +33,15 @@ let set_static_text element txt =
   Js.Unsafe.set (element##.style) (Js.string "display") (Js.string "block")
     
 let confirm_my_button = fun _ ->
-  let element = Js_of_ocaml.Dom_html.getElementById "extra-message" in
+  let element = Js_of_ocaml.Dom_html.getElementById "planets-message" in
   let _ = _myFloat !jd_start !jd_stop in
   set_static_text element ("Button was clicked for "^ !planet);
   true
 
-let create_extra_picker () =
+let create_planet_picker () =
   let open Tyxml_js.Html in
-  let message_div = div ~a:[a_id "extra-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
-  let select_div = div ~a:[a_id "extra-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
+  let message_div = div ~a:[a_id "planets-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
+  let select_div = div ~a:[a_id "planets-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
   let button = button ~a:[ a_id "my-button"; a_onclick confirm_my_button ] [ txt "Click Me" ] in
   let input = input ~a:[ a_id "my-input"; a_placeholder "Type here" ; a_oninput (fun _ -> true) ] () in
   let dropdown =
@@ -56,8 +57,8 @@ let create_extra_picker () =
                 (fun () -> false)
                 (fun select ->
                   let selected_value = Js.to_string (select##.value) in
-		  let element = Js_of_ocaml.Dom_html.getElementById "extra-select" in
-		  send selected_value;
+		  let element = Js_of_ocaml.Dom_html.getElementById "planets-select" in
+		  send 0 selected_value;
 		  set_static_text element ("Planet was selected: "^selected_value);
 		  planet := selected_value;
                   true
@@ -70,6 +71,44 @@ let create_extra_picker () =
          ["Mercury";"Venus";"Earth";"Mars";"Jupiter";"Saturn";"Uranus";"Neptune"])
   in
   let output = div ~a:[ a_id "output"; a_style "margin-top: 20px;" ] [] in
+  div [ button; br (); input; br (); dropdown; br (); output; message_div; select_div ]
+
+let create_comet_picker () =
+  let open Tyxml_js.Html in
+  let message_div = div ~a:[a_id "comet-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
+  let select_div = div ~a:[a_id "comet-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
+  let button = button ~a:[ a_id "comet-button"; a_onclick confirm_my_button ] [ txt "Click Me" ] in
+  let input = input ~a:[ a_id "comet-input"; a_placeholder "Type here" ; a_oninput (fun _ -> true) ] () in
+  let dropdown =
+    select
+      ~a:[ 
+        a_id "comet-dropdown";
+        a_onchange (fun ev ->
+          Js.Opt.case (ev##.target)
+            (fun () -> false)
+            (fun target ->
+              let select = Dom_html.CoerceTo.select target in
+              Js.Opt.case select
+                (fun () -> false)
+                (fun select ->
+                  let selected_index = select##.selectedIndex in
+		  let element = Js_of_ocaml.Dom_html.getElementById "comet-select" in
+		  let value1,value2,value3 = List.nth Comets.comets selected_index in
+		  send 1 value1;
+		  send 2 value2;
+		  send 3 value3;
+		  set_static_text element ("Comet was selected: "^value1^" "^value2^" "^value3);
+		  comet := selected_index;
+                  true
+                )
+            )
+        )
+      ]
+      (List.map
+         (fun opt -> option ~a:[ a_value opt ] (txt opt))
+         (List.map (fun (a,b,c) -> a^" "^b^" "^c) Comets.comets))
+  in
+  let output = div ~a:[ a_id "comet-output"; a_style "margin-top: 20px;" ] [] in
   div [ button; br (); input; br (); dropdown; br (); output; message_div; select_div ]
 
 (* Existing code remains the same *)
@@ -259,10 +298,16 @@ let create_tab_container () =
       content = create_date_picker (); 
       };
     { 
-      id = "extra"; 
-      label = "Extra"; 
-      description = "Additional interactive elements";
-      content = create_extra_picker (); 
+      id = "planets"; 
+      label = "Planets"; 
+      description = "Planet picker";
+      content = create_planet_picker (); 
+    };
+    { 
+      id = "comets"; 
+      label = "Comets"; 
+      description = "Comet picker";
+      content = create_comet_picker (); 
     };
     { 
       id = "color"; 

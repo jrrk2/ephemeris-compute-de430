@@ -275,7 +275,7 @@ int main_args(int argc, const char **argv) {
 #endif
 
 // my_program.c
-static char *planet = "earth";
+static char body[20];
 static settings ephemeris_settings;
 
 static char *dtoa(double value) {
@@ -316,10 +316,10 @@ int myFunction(int arg) {
 
 EMSCRIPTEN_KEEPALIVE
 double myFloat(double arg1, double arg2) {
-  printf("selected body: %s\n", planet);
+  printf("selected body: %s\n", body);
   // Set up default settings
   settings_default(&ephemeris_settings);
-  ephemeris_settings.objects_input_list = planet;
+  ephemeris_settings.objects_input_list = body;
   ephemeris_settings.jd_min = arg1;
   ephemeris_settings.jd_max = arg2;
   ephemeris_settings.jd_step = 1.0;
@@ -353,8 +353,16 @@ char *float_to_string(double f) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-void myAscii(double asciif) {
-  planet = float_to_string(asciif);
+void myAscii(int idx, double asciif) {
+  static char *object[4];
+  switch(idx)
+    {
+    case 0: strcpy(body, float_to_string(asciif)); break;
+    case 1: case 2: case 3:
+      object[idx] = float_to_string(asciif);
+      sprintf(body, "%s %s", object[1], object[2]);
+      break;
+    }
 }
 
 EMSCRIPTEN_KEEPALIVE

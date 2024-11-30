@@ -7,6 +7,10 @@ external _myAscii : int -> float -> unit = "_myAscii"
 
 let jd_start = ref 2451544.5
 let jd_stop = ref 2451544.5
+let txtdate_start = ref ""
+let txtdate_stop = ref ""
+let txttime_start = ref ""
+let txttime_stop = ref ""
 let mybody = ref "Sun"
 
 (* Get current date and tomorrow's date *)
@@ -65,19 +69,20 @@ let confirm_my_button msg = fun _ ->
 (*
  ~index:0
  *)
-    ~date_ut:"2024-11-27 14:45" 
+    ~date_ut:(!txtdate_start^" "^ !txttime_start)
     ~date_jdut:(Printf.sprintf "%10.3f" !jd_start) 
     ~ra:(Altaz.hms_of_float (ra)) 
     ~dec:(Altaz.dms_of_float (dec)) 
     ~azi:(Altaz.dms_of_float (az_calc))
     ~elev:(Altaz.dms_of_float (alt_calc))
     ~l_ap_sid_time:(Altaz.dms_of_float (lst_calc)) ();
-  
+(*  
   set_static_text element (!mybody^
 			 ": RA="^
 			 Altaz.hms_of_float (ra)^
 			 ", DEC="^
 			 Altaz.dms_of_float (dec));
+*)  
   true
 
 let create_planet_picker () =
@@ -288,43 +293,45 @@ let create_comet_picker () =
   div [ dropdown; br (); output; message_div; select_div ]      
   *)
 
-let handle_julian_date jd selected_date =
+let handle_julian_date txtdate jd selected_date =
 	  let yr,mon,dy = Scanf.sscanf selected_date "%d-%d-%d" (fun yr mon dy -> yr,mon,dy) in
           let element = Js_of_ocaml.Dom_html.getElementById "date-message" in
 	  let jd_frac = !jd -. 0.5 -. floor (!jd -. 0.5) in
+	  txtdate := selected_date;
 	  jd := Altaz.computeTheJulianDay true yr mon dy +. jd_frac;
 	  if !jd < !jd_start then jd_start := !jd;
 	  if !jd > !jd_stop then jd_stop := !jd;
           set_static_text element ("Julian Date Start: "^string_of_float !jd_start^", Stop: "^ string_of_float !jd_stop);
           true
 
-let handle_julian_time jd selected_date =          
-	  let hr,min = Scanf.sscanf selected_date "%d:%d" (fun hr min -> hr,min) in
+let handle_julian_time txttime jd selected_time =          
+	  let hr,min = Scanf.sscanf selected_time "%d:%d" (fun hr min -> hr,min) in
           let element = Js_of_ocaml.Dom_html.getElementById "date-message" in
+	  txttime := selected_time;
 	  jd := floor (!jd -. 0.5) +. 0.5 +. float_of_int(hr*3600+min*60) /. 86400.0;
 	  if !jd < !jd_start then jd_start := !jd;
 	  if !jd > !jd_stop then jd_stop := !jd;
           set_static_text element ("Julian Date Start: "^string_of_float !jd_start^", Stop: "^ string_of_float !jd_stop);
           true
 
-let handle_startend_date_change jd ev =
+let handle_startend_date_change txtdate jd ev =
   Js.Opt.case (ev##.target)
     (fun () -> false)
     (fun target ->
       let input = Dom_html.CoerceTo.input target in
       Js.Opt.case input
         (fun () -> false)
-        (fun input -> handle_julian_date jd (Js.to_string (input##.value)))
+        (fun input -> handle_julian_date txtdate jd (Js.to_string (input##.value)))
     )
 
-let handle_startend_time_change jd ev =
+let handle_startend_time_change txttime jd ev =
   Js.Opt.case (ev##.target)
     (fun () -> false)
     (fun target ->
       let input = Dom_html.CoerceTo.input target in
       Js.Opt.case input
         (fun () -> false)
-        (fun input -> handle_julian_time jd (Js.to_string (input##.value)))
+        (fun input -> handle_julian_time txttime jd (Js.to_string (input##.value)))
     )
 
 let create_date_picker () =
@@ -336,7 +343,7 @@ let create_date_picker () =
     a_id "start-date-picker"; 
     a_input_type `Date;
     a_value (format_date today);  (* Set default to current date *)
-    a_oninput (handle_startend_date_change jd_start)
+    a_oninput (handle_startend_date_change txtdate_start jd_start)
   ] () in
   
   let start_time_label = label ~a:[a_label_for "start-time-picker"] [txt "Start Time: "] in
@@ -344,7 +351,7 @@ let create_date_picker () =
     a_id "start-time-picker"; 
     a_input_type `Time;
     a_value (format_time today);  (* Set default to current date *)
-    a_oninput (handle_startend_time_change jd_start)
+    a_oninput (handle_startend_time_change txttime_start jd_start)
   ] () in
   
   let end_date_label = label ~a:[a_label_for "end-date-picker"] [txt "End Date: "] in
@@ -352,7 +359,7 @@ let create_date_picker () =
     a_id "end-date-picker"; 
     a_input_type `Date;
     a_value (format_date tomorrow);  (* Set default to current date *)
-   a_oninput (handle_startend_date_change jd_stop)
+   a_oninput (handle_startend_date_change txtdate_stop jd_stop)
   ] () in
   
   let end_time_label = label ~a:[a_label_for "end-time-picker"] [txt "End Time: "] in
@@ -360,7 +367,7 @@ let create_date_picker () =
     a_id "end-time-picker"; 
     a_input_type `Time;
     a_value (format_time tomorrow);  (* Set default to current date *)
-    a_oninput (handle_startend_time_change jd_stop)
+    a_oninput (handle_startend_time_change txttime_stop jd_stop)
   ] () in
   
   div [
@@ -544,9 +551,6 @@ let create_ui () =
     create_tab_container ();
     br ();
     Table_update.table_element;
-(*
- Template.content;
- *)
     div ~a:[a_id "output"; a_style "margin-top: 20px; padding: 10px; background-color: #f9f9f9;"] []
   ]
 
@@ -555,8 +559,8 @@ let () =
   Dom.appendChild root (Tyxml_js.To_dom.of_div (create_ui ()));
 
   (* we need to update the julian dates with the dialog defaults (now and 24 hours time) *)
-  let _ = handle_julian_date jd_start (format_date today) in
-  let _ = handle_julian_time jd_start (format_time today) in
-  let _ = handle_julian_date jd_stop (format_date tomorrow) in
-  let _ = handle_julian_time jd_stop (format_time tomorrow) in
+  let _ = handle_julian_date txtdate_start jd_start (format_date today) in
+  let _ = handle_julian_time txttime_start jd_start (format_time today) in
+  let _ = handle_julian_date txtdate_stop jd_stop (format_date tomorrow) in
+  let _ = handle_julian_time txttime_stop jd_stop (format_time tomorrow) in
   ()

@@ -1,41 +1,20 @@
 open Js_of_ocaml
 open Js_of_ocaml_tyxml
 
-let create_results_table data =
+let table_element =
   let open Tyxml_js.Html in
-  let headers =
-    [ "Date (UT) HR:MN"; "Date JDUT"; "R.A. (ICRF)"; "DEC"; "Azi (r-app)"; "Elev"; "L Ap Sid Time" ]
-  in
+  let headers = [ "Date (UT) HR:MN"; "Date JDUT"; "R.A. (ICRF)"; "DEC"; "Azi (r-app)"; "Elev"; "L Ap Sid Time" ] in
+  let hwidths = [ 150; 100; 100; 100; 100; 100; 100 ] in
   let header_row =
-    tr (List.map (fun header -> th [txt header]) headers)
+    tr (List.map2 (fun header wid -> th ~a:[a_style ("min-width: "^string_of_int wid^"px;")] [txt header]) headers hwidths)
   in
-  let rows = List.map (fun (date_ut, date_jdut, ra, dec, azi, elev, l_ap_sid_time) ->
-    tr [
-      td [txt date_ut];
-      td [txt date_jdut];
-      td [txt ra];
-      td [txt dec];
-      td [txt azi];
-      td [txt elev];
-      td [txt l_ap_sid_time];
-    ]
-  ) data in
   tablex 
     ~a:[
       a_id "results-table";
       a_style "border-collapse: collapse; width: 100%;"
     ]
     ~thead:(thead [ header_row ])
-[tbody rows]
-
-(* Example data *)
-let data = [
-  ("2024-11-26 12:34", "2451545.0", "10h 00m 00s", "-30° 00' 00\"", "120.0", "45.0", "23h 59m 59s");
-  ("2024-11-26 13:34", "2451545.1", "11h 00m 00s", "-31° 00' 00\"", "121.0", "46.0", "00h 00m 00s")
-]
-
-(* Usage *)
-let table_element = create_results_table data
+[tbody []]
 
 let update_table_row ?(index=0) ~date_ut ~date_jdut ~ra ~dec ~azi ~elev ~l_ap_sid_time () =
   try

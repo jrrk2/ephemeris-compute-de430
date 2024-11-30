@@ -1,5 +1,6 @@
 open Js_of_ocaml
 open Js_of_ocaml_tyxml
+open Utils
 
 external _myFunction : int -> float = "_myFunction"
 external _myFloat : float -> float -> float = "_myFloat"
@@ -17,53 +18,16 @@ let mybody = ref "Sun"
 let today = Unix.time()
 let tomorrow = today +. 86400.0
 
-(* Format dates to YYYY-MM-DD *)
-let format_date (date:float) =
-    let tm = Unix.gmtime date in
-    let year = tm.tm_year + 1900 in
-    let month = tm.tm_mon + 1 in
-    let day = tm.tm_mday in
-    Printf.sprintf "%04d-%02d-%02d" year month day  (* Format as YYYY-MM-DD *)
-
-(* Format time to HH:MM *)
-let format_time (date:float) =
-    let tm = Unix.gmtime date in
-    let hour = tm.tm_hour in
-    let minute = tm.tm_min in
-    Printf.sprintf "%02d:%02d" hour minute  (* Format as HH:MM *)
-
-let string_to_float (s : string) : float =
-  let len = String.length s in
-  let rec aux acc i =
-    if i < len then
-      aux (acc *. 128.0 +. float_of_int (127 land (Char.code s.[i]))) (i + 1)
-    else
-      acc
-  in
-aux 0.0 0
-
-let rec float_to_string f =
-  let flr = floor (f /. 128.0) in let f' = f -. flr *. 128.0 in
-  (if flr > 0.0 then float_to_string flr else "") ^ String.make 1 (Char.chr (int_of_float f'))
-
 let send idx str = _myAscii idx (string_to_float str)
-
-(* Existing dialog creation functions remain the same *)
-
-let set_static_text element txt =
-  element##.textContent := Js.some (Js.string txt);
-  Js.Unsafe.set (element##.style) (Js.string "display") (Js.string "block")
     
 let confirm_my_button msg = fun _ ->
   let element = Js_of_ocaml.Dom_html.getElementById msg in
   let _ = _myFloat !jd_start !jd_stop in
   let ra = (_myFunction 3) *. 180. /. Float.pi in
   let dec = (_myFunction 4) *. 180. /. Float.pi in
-  let latitude = 52.2 in
-  let longitude = 0.11667 in
-  let lst_calc = Altaz.local_siderial_time' longitude (!jd_start -. Altaz.jd_2000) in
+  let lst_calc = Altaz.local_siderial_time' !(Location.longitude) (!jd_start -. Altaz.jd_2000) in
   let ra_now, dec_now = Altaz.j2000_to_jnow ra dec in
-  let alt_calc, az_calc, hour_calc = Altaz.raDectoAltAz ra_now dec_now latitude longitude lst_calc in
+  let alt_calc, az_calc, hour_calc = Altaz.raDectoAltAz ra_now dec_now !(Location.latitude) !(Location.longitude) lst_calc in
 
   Table_update.append_table_row 
 (*
@@ -138,7 +102,7 @@ let create_comet_picker () =
   let message_div = div ~a:[a_id "comet-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
   let select_div = div ~a:[a_id "comet-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
   let button = button ~a:[ a_id "comet-button"; a_onclick (confirm_my_button "comet-message") ] [ txt "Find Comet" ] in
-  
+
   let year_dropdown =
     select
       ~a:[ 
@@ -498,6 +462,12 @@ let create_tab_headers tabs =
 let create_tab_container () =
   let open Tyxml_js.Html in
   let tabs = [
+    { 
+      id = "location"; 
+      label = "Location"; 
+      description = "Select and pick the nearest city";
+      content = Location.create_location_picker (); 
+      };
     { 
       id = "date"; 
       label = "Date"; 

@@ -61,8 +61,10 @@ let confirm_my_button msg = fun _ ->
   let ra_now, dec_now = Altaz.j2000_to_jnow ra dec in
   let alt_calc, az_calc, hour_calc = Altaz.raDectoAltAz ra_now dec_now latitude longitude lst_calc in
 
-  Table_update.update_table_row 
-    ~index:0 
+  Table_update.append_table_row 
+(*
+ ~index:0
+ *)
     ~date_ut:"2024-11-27 14:45" 
     ~date_jdut:(Printf.sprintf "%10.3f" !jd_start) 
     ~ra:(Altaz.hms_of_float (ra)) 

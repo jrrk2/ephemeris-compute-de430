@@ -95,3 +95,41 @@ let update_table_row ?(index=0) ~date_ut ~date_jdut ~ra ~dec ~azi ~elev ~l_ap_si
   | exn -> 
       Printf.printf "Exception occurred: %s\n" (Printexc.to_string exn)
 
+let append_table_row ~date_ut ~date_jdut ~ra ~dec ~azi ~elev ~l_ap_sid_time () =
+  try
+    (* Get the table *)
+    let table = Js_of_ocaml.Dom_html.getElementById "results-table" in
+
+    (* Find the tbody *)
+    let tbody_opt = Js.Opt.to_option (table##querySelector (Js.string "tbody")) in
+
+    match tbody_opt with
+    | Some tbody_elem ->
+        (* Create a new table row *)
+        let new_row = Js_of_ocaml.Dom_html.createTr Js_of_ocaml.Dom_html.document in
+
+        (* Create and populate cells *)
+        let cell_values = [
+          date_ut; 
+          date_jdut; 
+          ra; 
+          dec; 
+          azi; 
+          elev; 
+          l_ap_sid_time
+        ] in
+
+        let maplst = List.mapi (fun i value ->
+          let cell = Js_of_ocaml.Dom_html.createTd Js_of_ocaml.Dom_html.document in
+          cell##.textContent := Js.some (Js.string value);
+          new_row##appendChild (cell :> Dom.node Js.t)
+        ) cell_values in
+
+        (* Append the new row to the tbody *)
+        let _ = tbody_elem##appendChild (new_row :> Dom.node Js.t) in ()
+
+    | None -> 
+        Printf.printf "No tbody found in table\n"
+  with
+  | exn -> 
+Printf.printf "Exception occurred: %s\n" (Printexc.to_string exn)

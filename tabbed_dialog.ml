@@ -60,17 +60,22 @@ let confirm_my_button msg = fun _ ->
   let lst_calc = Altaz.local_siderial_time' longitude (!jd_start -. Altaz.jd_2000) in
   let ra_now, dec_now = Altaz.j2000_to_jnow ra dec in
   let alt_calc, az_calc, hour_calc = Altaz.raDectoAltAz ra_now dec_now latitude longitude lst_calc in
+
+  Table_update.update_table_row 
+    ~index:0 
+    ~date_ut:"2024-11-27 14:45" 
+    ~date_jdut:(Printf.sprintf "%10.3f" !jd_start) 
+    ~ra:(Altaz.hms_of_float (ra)) 
+    ~dec:(Altaz.dms_of_float (dec)) 
+    ~azi:(Altaz.dms_of_float (az_calc))
+    ~elev:(Altaz.dms_of_float (alt_calc))
+    ~l_ap_sid_time:(Altaz.dms_of_float (lst_calc)) ();
+  
   set_static_text element (!mybody^
 			 ": RA="^
 			 Altaz.hms_of_float (ra)^
 			 ", DEC="^
-			 Altaz.dms_of_float (dec)^
-			 ", LST="^
-			 Altaz.dms_of_float (lst_calc)^
-			 ", ALT="^
-			 Altaz.dms_of_float (alt_calc)^
-			 ", AZ="^
-			 Altaz.dms_of_float (az_calc));
+			 Altaz.dms_of_float (dec));
   true
 
 let create_planet_picker () =
@@ -552,14 +557,4 @@ let () =
   let _ = handle_julian_time jd_start (format_time today) in
   let _ = handle_julian_date jd_stop (format_date tomorrow) in
   let _ = handle_julian_time jd_stop (format_time tomorrow) in
-
-  Table_update.update_table_row 
-    ~index:0 
-    ~date_ut:"2024-11-27 14:45" 
-    ~date_jdut:"2451546.0" 
-    ~ra:"12h 15m 30s" 
-    ~dec:"-32° 15' 45\"" 
-    ~azi:"125.5" 
-    ~elev:"47.2" 
-    ~l_ap_sid_time:"01h 00m 15s" ()
-  
+  ()

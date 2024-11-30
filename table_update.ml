@@ -3,10 +3,10 @@ open Js_of_ocaml_tyxml
 
 let create_results_table data =
   let open Tyxml_js.Html in
-  let headers = 
+  let headers =
     [ "Date (UT) HR:MN"; "Date JDUT"; "R.A. (ICRF)"; "DEC"; "Azi (r-app)"; "Elev"; "L Ap Sid Time" ]
   in
-  let header_row = 
+  let header_row =
     tr (List.map (fun header -> th [txt header]) headers)
   in
   let rows = List.map (fun (date_ut, date_jdut, ra, dec, azi, elev, l_ap_sid_time) ->
@@ -19,11 +19,14 @@ let create_results_table data =
       td [txt elev];
       td [txt l_ap_sid_time];
     ]
-    ) data in
-  tablex ~a:[
-    a_id "results-table";
-    a_style "border-collapse: collapse; width: 100%;"
-  ] ( tbody ( header_row :: rows ) :: [] )
+  ) data in
+  tablex 
+    ~a:[
+      a_id "results-table";
+      a_style "border-collapse: collapse; width: 100%;"
+    ]
+    ~thead:(thead [ header_row ])
+[tbody rows]
 
 (* Example data *)
 let data = [
@@ -73,7 +76,7 @@ let update_table_row ?(index=0) ~date_ut ~date_jdut ~ra ~dec ~azi ~elev ~l_ap_si
               if idx < cells##.length then
                 Js.Opt.iter (cells##item idx) (fun cell ->
                   cell##.textContent := Js.some (Js.string value);
-                  Printf.printf "Updated cell %d with value: %s\n" idx value
+                  if false then Printf.printf "Updated cell %d with value: %s\n" idx value
                 )
             in
             update_cell 0 date_ut;
@@ -92,32 +95,3 @@ let update_table_row ?(index=0) ~date_ut ~date_jdut ~ra ~dec ~azi ~elev ~l_ap_si
   | exn -> 
       Printf.printf "Exception occurred: %s\n" (Printexc.to_string exn)
 
-(*
-let update_table_row ?(index=0) ~date_ut ~date_jdut ~ra ~dec ~azi ~elev ~l_ap_sid_time () =
-  let table = Js_of_ocaml.Dom_html.getElementById "results-table" in
-  let tbody = 
-    Js.Opt.to_option (table##querySelector (Js.string "tbody"))
-  in
-  match tbody with
-  | Some tbody_elem ->
-      let rows = tbody_elem##querySelectorAll (Js.string "tr") in
-      if index < rows##.length then
-        let row = rows##item index in
-        Js.Opt.iter row (fun row ->
-          let cells = row##querySelectorAll (Js.string "td") in
-          let update_cell idx value =
-            if idx < cells##.length then
-              Js.Opt.iter (cells##item idx) (fun cell ->
-                cell##.textContent := Js.some (Js.string value)
-              )
-          in
-          update_cell 0 date_ut;
-          update_cell 1 date_jdut;
-          update_cell 2 ra;
-          update_cell 3 dec;
-          update_cell 4 azi;
-          update_cell 5 elev;
-          update_cell 6 l_ap_sid_time
-        )
-  | None -> ()
-*)

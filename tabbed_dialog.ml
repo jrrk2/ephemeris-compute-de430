@@ -530,45 +530,16 @@ let create_tab_container () =
     )
   in
   div [tab_headers; tab_contents]
-
-let create_results_table data =
-  let open Tyxml_js.Html in
-  let headers = 
-    [ "Date (UT) HR:MN"; "Date JDUT"; "R.A. (ICRF)"; "DEC"; "Azi (r-app)"; "Elev"; "L Ap Sid Time" ]
-  in
-  let header_row = 
-    tr (List.map (fun header -> th [txt header]) headers)
-  in
-  let rows = List.map (fun (date_ut, date_jdut, ra, dec, azi, elev, l_ap_sid_time) ->
-    tr [
-      td [txt date_ut];
-      td [txt date_jdut];
-      td [txt ra];
-      td [txt dec];
-      td [txt azi];
-      td [txt elev];
-      td [txt l_ap_sid_time];
-    ]
-  ) data in
-  table ~a:[a_style "border-collapse: collapse; width: 100%;"] (
-    [ header_row ] @ rows
-  )
-
-(* Example data *)
-let data = [
-  ("2024-11-26 12:34", "2451545.0", "10h 00m 00s", "-30° 00' 00\"", "120.0", "45.0", "23h 59m 59s");
-  ("2024-11-26 13:34", "2451545.1", "11h 00m 00s", "-31° 00' 00\"", "121.0", "46.0", "00h 00m 00s")
-]
-
-(* Usage *)
-let table_element = create_results_table data
     
 let create_ui () =
   let open Tyxml_js.Html in
   div ~a:[a_style "max-width: 600px; margin: 0 auto; padding: 20px;"] [
     create_tab_container ();
     br ();
-    table_element;
+    Table_update.table_element;
+(*
+ Template.content;
+ *)
     div ~a:[a_id "output"; a_style "margin-top: 20px; padding: 10px; background-color: #f9f9f9;"] []
   ]
 
@@ -581,5 +552,14 @@ let () =
   let _ = handle_julian_time jd_start (format_time today) in
   let _ = handle_julian_date jd_stop (format_date tomorrow) in
   let _ = handle_julian_time jd_stop (format_time tomorrow) in
-  ()
+
+  Table_update.update_table_row 
+    ~index:0 
+    ~date_ut:"2024-11-27 14:45" 
+    ~date_jdut:"2451546.0" 
+    ~ra:"12h 15m 30s" 
+    ~dec:"-32° 15' 45\"" 
+    ~azi:"125.5" 
+    ~elev:"47.2" 
+    ~l_ap_sid_time:"01h 00m 15s" ()
   

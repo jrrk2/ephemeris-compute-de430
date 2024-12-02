@@ -84,6 +84,43 @@ let create_planet_picker () =
   let output = div ~a:[ a_id "output"; a_style "margin-top: 20px;" ] [] in
   div [ button; br (); input; br (); dropdown; br (); output; message_div; select_div ]
 
+let create_asteroid_picker () =
+  let open Tyxml_js.Html in
+  let message_div = div ~a:[a_id "asteroids-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
+  let select_div = div ~a:[a_id "asteroids-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
+  let button = button ~a:[ a_id "my-button"; a_onclick (confirm_my_button "asteroids-message") ] [ txt "Find Major body" ] in
+  let input = input ~a:[ a_id "my-input"; a_placeholder "Type here" ; a_oninput (fun _ -> true) ] () in
+  let dropdown =
+    select
+      ~a:[ 
+        a_id "my-dropdown";
+        a_onchange (fun ev ->
+          Js.Opt.case (ev##.target)
+            (fun () -> false)
+            (fun target ->
+              let select = Dom_html.CoerceTo.select target in
+              Js.Opt.case select
+                (fun () -> false)
+                (fun select ->
+                  let selected_index = select##.selectedIndex in
+                  let selected_value = Js.to_string (select##.value) in
+		  let search = "A"^string_of_int (selected_index+1) in
+		  let element = Js_of_ocaml.Dom_html.getElementById "asteroids-select" in
+		  send 0 search;
+		  set_static_text element ("Body selected: "^search^" "^selected_value);
+		  mybody := selected_value;
+                  true
+                )
+            )
+        )
+      ]
+      (List.map
+         (fun (n,opt) -> option ~a:[ a_value opt ] (txt opt))
+         Major_asteroids.major_asteroids)
+  in
+  let output = div ~a:[ a_id "output"; a_style "margin-top: 20px;" ] [] in
+  div [ button; br (); input; br (); dropdown; br (); output; message_div; select_div ]
+
 let group_comets comets =
   List.fold_right (fun (name, sequence, discoverer) acc ->
     let year = String.sub name 2 4 in
@@ -487,10 +524,10 @@ let create_tab_container () =
       content = create_comet_picker (); 
     };
     { 
-      id = "color"; 
-      label = "Color"; 
-      description = "Pick a color from the palette";
-      content = create_color_picker (); 
+      id = "asteroids"; 
+      label = "Asteroids"; 
+      description = "Major Asteroid Picker";
+      content = create_asteroid_picker (); 
     }
   ] in
   

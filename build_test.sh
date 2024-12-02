@@ -2,3 +2,4 @@ cc -Wall -Wno-unknown-pragmas -g -I src -I gsl-2.8 -D DEBUG=1 -D MEMDEBUG1=0 -D 
 
 ./ephem_test.bin --objects="C/2023 A3"
 ./ephem_test.bin --objects=mars --use_orbital_elements=1
+./ephem_test.bin --objects=A1

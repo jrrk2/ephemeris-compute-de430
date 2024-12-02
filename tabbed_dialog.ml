@@ -382,6 +382,7 @@ let create_date_picker () =
   message_div
   ]
 
+(*
 let tz_local () =
     let dummy = (Js.Unsafe.obj [||]) in
     let intl = Js.Unsafe.global##.Intl in
@@ -395,8 +396,7 @@ let create_color_picker () =
   let label = label ~a:[a_label_for "color-picker"] [txt "Pick a color: "] in
   let input = input ~a:[a_id "color-picker"; a_input_type `Color] () in
   div [label; br (); input]
-
-(* Previous helper functions remain the same *)
+*)
 
 (* Tab configuration type *)
 type tab_config = {
@@ -496,14 +496,14 @@ let create_tab_headers tabs =
     ) tabs
   )
 
-let create_tab_container () =
+let create_tab_container tz =
   let open Tyxml_js.Html in
   let tabs = [
     { 
       id = "location"; 
       label = "Location"; 
       description = "Select and pick the nearest city";
-      content = Location.create_location_picker (); 
+      content = Location.create_location_picker tz; 
       };
     { 
       id = "date"; 
@@ -552,10 +552,10 @@ let create_tab_container () =
   in
   div [tab_headers; tab_contents]
     
-let create_ui () =
+let create_ui tz =
   let open Tyxml_js.Html in
   div ~a:[a_style "max-width: 600px; margin: 0 auto; padding: 20px;"] [
-    create_tab_container ();
+    create_tab_container tz;
     br ();
     Table_update.table_element;
     div ~a:[a_id "output"; a_style "margin-top: 20px; padding: 10px; background-color: #f9f9f9;"] []
@@ -563,7 +563,10 @@ let create_ui () =
 
 let () =
   let root = Dom_html.getElementById "app" in
-  Dom.appendChild root (Tyxml_js.To_dom.of_div (create_ui ()));
+  let timezone = List.rev (String.split_on_char '/' (try Unix.readlink "/etc/localtime" with _ -> "/var/db/timezone/zoneinfo/Europe/London")) in
+  let tzcity = try Sys.getenv "TIME_ZONE" with _ -> List.hd (List.tl timezone)  ^ "/" ^ List.hd timezone in
+  Dom.appendChild root (Tyxml_js.To_dom.of_div (create_ui tzcity));
+  Location.update_city_options tzcity;
 
   (* we need to update the julian dates with the dialog defaults (now and 24 hours time) *)
   let _ = handle_julian_date txtdate_start jd_start (format_date today) in

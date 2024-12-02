@@ -8,9 +8,9 @@ let region = ref ""
 let latitude = ref 0.0
 let longitude = ref 0.0
 
-let group_cities cities =
+let grouped_cities =
   let grouped = ref [] in
-  Hashtbl.iter (fun k x -> grouped := (k,x) :: !grouped) cities;
+  Hashtbl.iter (fun k x -> grouped := (k,x) :: !grouped) Base_locations.loch;
   List.sort compare !grouped
 
 let confirm_my_button msg = fun _ ->
@@ -18,10 +18,39 @@ let confirm_my_button msg = fun _ ->
   set_static_text element ("City selected: "^ !city^", "^ !region ^ " (latitude="^ string_of_float !latitude^", longitude="^string_of_float !longitude ^ ")");
   true
 
-let create_location_picker () =
+let update_city_options selected_timezone =
+  print_endline selected_timezone;
   let open Tyxml_js.Html in
-  let grouped_cities = group_cities Base_locations.loch in
-  
+  let city_dropdown = Js_of_ocaml.Dom_html.getElementById "city-specific-dropdown" in
+  let city_options = 
+    List.find (fun (timezone, _) -> timezone = selected_timezone) grouped_cities 
+    |> snd 
+    |> List.mapi (fun idx (name, region, lat, long) -> 
+      option 
+        ~a:[a_value (string_of_int idx)] 
+        (txt (name ^ " " ^ region))
+    )
+  in
+  print_endline ("city options: "^string_of_int (List.length city_options));
+
+  (* Convert to Js.opt before using Js.Opt.iter *)
+  let city_dropdown_opt = Js.Opt.return city_dropdown in
+  Js.Opt.iter city_dropdown_opt (fun dropdown ->
+    (* Clear existing options *)
+    dropdown##.innerHTML := Js.string "";
+
+    (* Add new options *)
+    List.iter (fun opt -> 
+      let dom_opt = Tyxml_js.To_dom.of_option opt in
+      Dom.appendChild dropdown dom_opt
+    ) city_options;
+
+    (* Show city dropdown *)
+    dropdown##.style##.display := Js.string "block"
+  )
+
+let create_location_picker tz =
+  let open Tyxml_js.Html in  
   let message_div = div ~a:[a_id "city-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
   let select_div = div ~a:[a_id "city-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
   let button = button ~a:[ a_id "city-button"; a_onclick (confirm_my_button "city-message") ] [ txt "Set City" ] in
@@ -33,47 +62,17 @@ let create_location_picker () =
         a_onchange (fun ev ->
           Js.Opt.case (ev##.target)
             (fun () -> false)
-            (fun target ->
-              let select = Dom_html.CoerceTo.select target in
+            (fun target -> let select = Dom_html.CoerceTo.select target in
               Js.Opt.case select
                 (fun () -> false)
-                (fun select ->
-                  let selected_timezone = Js.to_string (select##.value) in
-                  let city_dropdown = Js_of_ocaml.Dom_html.getElementById "city-specific-dropdown" in
-                  let city_options = 
-                    List.find (fun (timezone, _) -> timezone = selected_timezone) grouped_cities 
-                    |> snd 
-                    |> List.mapi (fun idx (name, region, lat, long) -> 
-                      option 
-                        ~a:[a_value (string_of_int idx)] 
-                        (txt (name ^ " " ^ region))
-                    )
-                  in
-                  
-                  (* Clear existing options *)
-                  Js.Opt.iter (city_dropdown##.firstChild) (fun child ->
-                    let _ = city_dropdown##removeChild child in
-                    ()
-                  );
-                  
-                  (* Add new options *)
-                  List.iter (fun opt -> 
-                    let dom_opt = Tyxml_js.To_dom.of_option opt in
-                    Dom.appendChild city_dropdown dom_opt
-                  ) city_options;
-                  
-                  (* Show city dropdown *)
-                  city_dropdown##.style##.display := Js.string "block";
-                  
-                  true
-                )
+                (fun select -> update_city_options (Js.to_string (select##.value)); true)
             )
         )
       ]
       (List.map 
         (fun (timezone, _) -> 
           option 
-            ~a:[a_value timezone] 
+            ~a:(a_value timezone :: if timezone=tz then [a_selected ()] else []) 
             (txt timezone)
         ) 
         grouped_cities)
@@ -83,7 +82,6 @@ let create_location_picker () =
     select
       ~a:[ 
         a_id "city-specific-dropdown";
-        a_style "display: none;";
         a_onchange (fun ev ->
           Js.Opt.case (ev##.target)
             (fun () -> false)

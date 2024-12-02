@@ -114,3 +114,45 @@ let create_location_picker tz =
 
   let output = div ~a:[ a_id "city-output"; a_style "margin-top: 20px;" ] [] in
   div [ button; timezone_dropdown; br (); city_dropdown; br (); output; message_div; select_div ]
+
+let restore() = 
+ (* Restore saved values if they exist *)
+  begin match Cookie.get "city", Cookie.get "area", Cookie.get "latitude", Cookie.get "longitude" with
+  | Some saved_city, Some saved_area, Some saved_lat, Some saved_long ->
+      city := saved_city;
+      region := saved_area;
+      latitude := float_of_string saved_lat;
+      longitude := float_of_string saved_long;
+      
+      (* Update timezone dropdown *)
+      let tz_dropdown = Js_of_ocaml.Dom_html.getElementById "city-timezone-dropdown" in
+      let city_dropdown = Js_of_ocaml.Dom_html.getElementById "city-specific-dropdown" in
+      begin match Cookie.get "timezone" with
+      | Some saved_tz ->
+          Js.Opt.iter (Dom_html.CoerceTo.select tz_dropdown) (fun dropdown ->
+            dropdown##.value := Js.string saved_tz;
+            (* Update city dropdown *)
+            update_city_options saved_tz;
+            (* After city options are updated, set the correct city *)
+            Js.Opt.iter (Dom_html.CoerceTo.select city_dropdown) (fun citydrop ->
+              let cities = Hashtbl.find Base_locations.loch saved_tz in
+              let city_index = 
+                let rec find_index i = function
+                  | [] -> raise Not_found
+                  | (name, region, _, _)::_ when name = saved_city && region = saved_area -> i
+                  | _::rest -> find_index (i+1) rest
+                in
+                find_index 0 cities
+              in
+              citydrop##.value := Js.string (string_of_int city_index)
+            )
+          )
+      | None -> ()
+      end;
+
+      let element = Js_of_ocaml.Dom_html.getElementById "city-message" in
+      set_static_text element ("City selected: "^ saved_city ^", "^ saved_area ^ 
+                              " (latitude="^ saved_lat ^
+                              ", longitude="^ saved_long ^ ")")
+  | _ -> ()
+  end

@@ -606,31 +606,25 @@ let create_ui tz =
     Table_update.table_element;
     div ~a:[a_id "output"; a_style "margin-top: 20px; padding: 10px; background-color: #f9f9f9;"] []
   ]
-
 let () =
   let root = Dom_html.getElementById "app" in
-  let timezone = List.rev (String.split_on_char '/' (try Unix.readlink "/etc/localtime" with _ -> "/var/db/timezone/zoneinfo/Europe/London")) in
-  let tzcity = try Sys.getenv "TIME_ZONE" with _ -> List.hd (List.tl timezone)  ^ "/" ^ List.hd timezone in
-  Dom.appendChild root (Tyxml_js.To_dom.of_div (create_ui tzcity));
-  Location.update_city_options tzcity;
+  let timezone = 
+    match Cookie.get "timezone" with
+    | Some tz -> tz
+    | None ->
+        let sys_tz = List.rev (String.split_on_char '/' (try Unix.readlink "/etc/localtime" with _ -> "/var/db/timezone/zoneinfo/Europe/London")) in
+        let default_tz = try Sys.getenv "TIME_ZONE" with _ -> List.hd (List.tl sys_tz) ^ "/" ^ List.hd sys_tz in
+        default_tz
+  in
+  Dom.appendChild root (Tyxml_js.To_dom.of_div (create_ui timezone));
+  Location.update_city_options timezone;
+  Location.restore ();
 
- (* Restore saved values if they exist *)
-  begin match Cookie.get "city", Cookie.get "area", Cookie.get "latitude", Cookie.get "longitude" with
-  | Some saved_city, Some saved_area, Some saved_lat, Some saved_long -> let open Location in
-      city := saved_city;
-      region := saved_area;
-      latitude := float_of_string saved_lat;
-      longitude := float_of_string saved_long;
-      let element = Js_of_ocaml.Dom_html.getElementById "city-message" in
-      set_static_text element ("City selected: "^ !city^", "^ !region ^ 
-                              " (latitude="^ string_of_float !latitude^
-                              ", longitude="^string_of_float !longitude ^ ")")
-  | _ -> ()
-  end;
-
-  (* we need to update the julian dates with the dialog defaults (now and 24 hours time) *)
+  (* Initialize dates *)
   let _ = handle_julian_date txtdate_start jd_start (format_date today) in
   let _ = handle_julian_time txttime_start jd_start (format_time today) in
   let _ = handle_julian_date txtdate_stop jd_stop (format_date tomorrow) in
   let _ = handle_julian_time txttime_stop jd_stop (format_time tomorrow) in
   ()
+
+(*end*)

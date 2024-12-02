@@ -398,6 +398,45 @@ let create_color_picker () =
   div [label; br (); input]
 *)
 
+let create_messier_picker () =
+  let open Tyxml_js.Html in
+  let message_div = div ~a:[a_id "messier-message"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
+  let select_div = div ~a:[a_id "messier-select"; a_style "padding-top: 15px; font-size: 16px; color: #333; display: none;"] [txt ""] in
+  let button = button ~a:[ a_id "my-button"; a_onclick (confirm_my_button "messier-message") ] [ txt "Find Messier Object" ] in
+  let input = input ~a:[ a_id "my-input"; a_placeholder "Type here" ; a_oninput (fun _ -> true) ] () in
+  let dropdown =
+    select
+      ~a:[ 
+        a_id "messier-dropdown";
+        a_onchange (fun ev ->
+          Js.Opt.case (ev##.target)
+            (fun () -> false)
+            (fun target ->
+              let select = Dom_html.CoerceTo.select target in
+              Js.Opt.case select
+                (fun () -> false)
+                (fun select ->
+                  let selected_index = select##.selectedIndex in
+                  let selected_value = Js.to_string (select##.value) in
+                  let element = Js_of_ocaml.Dom_html.getElementById "messier-select" in
+                  let (name, ra, dec, _) = Messier_catalogue.messier_array.(selected_index) in
+                  send 0 name;
+                  set_static_text element ("Object selected: "^name^" (RA: "^ra^", Dec: "^dec^")");
+                  mybody := name;
+                  true
+                )
+            )
+        )
+      ]
+      (Array.to_list (Array.mapi
+         (fun idx (name, ra, dec, _) -> 
+           option ~a:[ a_value (string_of_int idx) ] 
+             (txt (Printf.sprintf "%s (RA: %s, Dec: %s)" name ra dec)))
+         Messier_catalogue.messier_array))
+  in
+  let output = div ~a:[ a_id "messier-output"; a_style "margin-top: 20px;" ] [] in
+div [ button; br (); input; br (); dropdown; br (); output; message_div; select_div ]
+
 (* Tab configuration type *)
 type tab_config = {
   id: string;
@@ -528,7 +567,13 @@ let create_tab_container tz =
       label = "Asteroids"; 
       description = "Major Asteroid Picker";
       content = create_asteroid_picker (); 
-    }
+    };
+  { 
+    id = "messier"; 
+    label = "Messier"; 
+    description = "Messier Object Picker";
+    content = create_messier_picker (); 
+  }
   ] in
   
   let tab_headers = create_tab_headers tabs in
@@ -536,7 +581,8 @@ let create_tab_container tz =
     div ~a:[
       a_class ["3d-card-index-contents"]; 
       a_style ("border: 2px solid #ddd; " ^
-              "padding: 20px; " ^
+	      "padding: 20px; " ^
+              "min-height: 300px; " ^  (* Added this line *)
               "background-color: white;" ^
               "box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);" ^
               "transform: translateY(-10px);")
@@ -567,6 +613,20 @@ let () =
   let tzcity = try Sys.getenv "TIME_ZONE" with _ -> List.hd (List.tl timezone)  ^ "/" ^ List.hd timezone in
   Dom.appendChild root (Tyxml_js.To_dom.of_div (create_ui tzcity));
   Location.update_city_options tzcity;
+
+ (* Restore saved values if they exist *)
+  begin match Cookie.get "city", Cookie.get "area", Cookie.get "latitude", Cookie.get "longitude" with
+  | Some saved_city, Some saved_area, Some saved_lat, Some saved_long -> let open Location in
+      city := saved_city;
+      region := saved_area;
+      latitude := float_of_string saved_lat;
+      longitude := float_of_string saved_long;
+      let element = Js_of_ocaml.Dom_html.getElementById "city-message" in
+      set_static_text element ("City selected: "^ !city^", "^ !region ^ 
+                              " (latitude="^ string_of_float !latitude^
+                              ", longitude="^string_of_float !longitude ^ ")")
+  | _ -> ()
+  end;
 
   (* we need to update the julian dates with the dialog defaults (now and 24 hours time) *)
   let _ = handle_julian_date txtdate_start jd_start (format_date today) in

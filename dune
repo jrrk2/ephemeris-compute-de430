@@ -1,7 +1,7 @@
 (executable
  (name tabbed_dialog)
  (modes js)
- (modules utils base_locations location template table_update comets major_asteroids altaz tabbed_dialog)
+ (modules utils base_locations cookie location template table_update comets major_asteroids messier_catalogue altaz tabbed_dialog)
  (libraries js_of_ocaml-lwt js_of_ocaml-tyxml yojson base64 cohttp-lwt-jsoo xml-light js_of_ocaml unix js_of_ocaml-ppx lwt)
  (preprocess (pps lwt_ppx js_of_ocaml-ppx tyxml-ppx))
  )

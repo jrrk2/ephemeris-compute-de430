@@ -1,6 +1,6 @@
 open Js_of_ocaml
 
-let verbose = false
+let verbose = true
 
 let set_location_cookie position =
   let document = Dom_html.window##.document in

@@ -18,11 +18,11 @@
       -s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=1048576 \
       -s 'EXPORTED_FUNCTIONS=[_myFunction,_myFloat,_myAscii,_main]'")
   ))
-  (targets my_program.js my_program.wasm))
+  (targets my_program.js my_program.wasm my_program.data))
 
 (rule
   (alias default)
-  (deps tabbed_dialog.bc.js my_program.js my_program.wasm
+  (deps _build/default/tabbed_dialog.bc.js _build/default/my_program.js _build/default/my_program.wasm
         src/main.c 
         src/argparse/argparse.c 
         src/coreUtils/asciiDouble.c 
